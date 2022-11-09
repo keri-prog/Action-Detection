@@ -4,6 +4,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 import math
 
+
 class MovenetLite:
     def __init__(self) -> None:
         # Optional if you are using a GPU
@@ -11,8 +12,9 @@ class MovenetLite:
             gpus = tf.config.experimental.list_physical_devices('GPU')
             for gpu in gpus:
                 tf.config.experimental.set_memory_growth(gpu, True)
-        self.interpreter = tf.lite.Interpreter(model_path='lite-model_movenet_multipose_lightning_tflite_float16_1.tflite')
-        
+        self.interpreter = tf.lite.Interpreter(
+            model_path='lite-model_movenet_multipose_lightning_tflite_float16_1.tflite')
+
     def detect(interpreter, input_tensor):
         """Runs detection on an input image.
 
@@ -40,7 +42,8 @@ class MovenetLite:
 
         interpreter.invoke()
 
-        keypoints_with_scores = interpreter.get_tensor(output_details[0]['index'])
+        keypoints_with_scores = interpreter.get_tensor(
+            output_details[0]['index'])
         return keypoints_with_scores
 
     def keep_aspect_ratio_resizer(image, target_size):
@@ -64,10 +67,11 @@ class MovenetLite:
             scaled_height = math.ceil(height * scale)
             image = tf.image.resize(image, [scaled_height, target_width])
             target_height = int(math.ceil(scaled_height / 32) * 32)
-        image = tf.image.pad_to_bounding_box(image, 0, 0, target_height, target_width)
+        image = tf.image.pad_to_bounding_box(
+            image, 0, 0, target_height, target_width)
         return (image,  (target_height, target_width))
 
-    def infer_lite(self, video_path:str):
+    def infer_lite(self, video_path: str):
         cap = cv2.VideoCapture(video_path)
         input_size = 256
         frame_keypoints = []
@@ -76,28 +80,33 @@ class MovenetLite:
             if ret:
                 # Resize image
                 img = frame.copy()
-                img = tf.image.resize_with_pad(tf.expand_dims(img, axis=0), 320,512)
+                img = tf.image.resize_with_pad(
+                    tf.expand_dims(img, axis=0), 320, 512)
                 input_img = tf.cast(img, dtype=tf.int32)
-                
-                resized_image, image_shape = self.keep_aspect_ratio_resizer(input_img, input_size)
+
+                resized_image, image_shape = self.keep_aspect_ratio_resizer(
+                    input_img, input_size)
                 image_tensor = tf.cast(resized_image, dtype=tf.uint8)
 
-                interpreter = tf.lite.Interpreter(model_path='../weights/lite-model_movenet_multipose_lightning_tflite_float16_1.tflite')
+                interpreter = tf.lite.Interpreter(
+                    model_path='../weights/lite-model_movenet_multipose_lightning_tflite_float16_1.tflite')
 
                 # Output: [1, 6, 56] tensor that contains keypoints/bbox/scores.
                 keypoints_with_scores = self.detect(
                     interpreter, tf.cast(image_tensor, dtype=tf.uint8))
-                keypoints_with_scores = keypoints_with_scores[:,:,:51].reshape((6,17,3))
+                keypoints_with_scores = keypoints_with_scores[:, :, :51].reshape(
+                    (6, 17, 3))
 
                 frame_keypoints.append(keypoints_with_scores)
             else:
                 break
-            if cv2.waitKey(10) & 0xFF==ord('q'):
+            if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
         cap.release()
         cv2.destroyAllWindows()
         frame_keypoints = np.array(frame_keypoints)
         return frame_keypoints
+
 
 class Movenet:
     def __init__(self) -> None:
@@ -106,10 +115,11 @@ class Movenet:
             gpus = tf.config.experimental.list_physical_devices('GPU')
             for gpu in gpus:
                 tf.config.experimental.set_memory_growth(gpu, True)
-        model = hub.load('https://tfhub.dev/google/movenet/multipose/lightning/1')
+        model = hub.load(
+            'https://tfhub.dev/google/movenet/multipose/lightning/1')
         self.movenet = model.signatures['serving_default']
 
-    def infer(self, video_path:str):
+    def infer(self, video_path: str):
         frame_keypoints = []
         cap = cv2.VideoCapture(video_path)
         while cap.isOpened():
@@ -117,16 +127,18 @@ class Movenet:
             if ret:
                 # Resize image
                 img = frame.copy()
-                img = tf.image.resize_with_pad(tf.expand_dims(img, axis=0), 320,512)
+                img = tf.image.resize_with_pad(
+                    tf.expand_dims(img, axis=0), 320, 512)
                 input_img = tf.cast(img, dtype=tf.int32)
-                
+
                 # Detection section
                 results = self.movenet(input_img)
-                keypoints_with_scores = results['output_0'].numpy()[:,:,:51].reshape((6,17,3))
+                keypoints_with_scores = results['output_0'].numpy()[
+                    :, :, :51].reshape((6, 17, 3))
                 frame_keypoints.append(keypoints_with_scores)
             else:
                 break
-            if cv2.waitKey(10) & 0xFF==ord('q'):
+            if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
         cap.release()
         cv2.destroyAllWindows()
