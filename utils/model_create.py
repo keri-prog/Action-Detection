@@ -2,6 +2,27 @@ from params import *
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import *
 
+
+def create_lstm():
+    '''
+    This function will construct the required lstm model.
+    Returns:
+        model: It is the required constructed lstm model.
+    '''
+
+    model = Sequential([
+        LSTM(64, return_sequences=True, activation='relu', input_shape=(60, 306)),
+        LSTM(128, return_sequences=True, activation='relu'),
+        LSTM(64, return_sequences=True, activation='relu'),
+        Dense(64, activation='relu'),
+        Dense(32, activation='relu'),
+        Dense(16, activation='relu'),
+        Dense(8, activation='relu'),
+        Dense(1, activation='sigmoid')])
+
+    return model
+
+
 def create_convlstm_model():
     '''
     This function will construct the required convlstm model.
